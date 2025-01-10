@@ -1,5 +1,6 @@
 /*
- * Copyright 2007-2020 Broadcom Inc. All rights reserved.
+ * $Id: lkm.h,v 1.22 Broadcom SDK $
+ * $Copyright: 2017-2024 Broadcom Inc. All rights reserved.
  * 
  * Permission is granted to use, copy, modify and/or distribute this
  * software under either one of the licenses below.
@@ -22,12 +23,9 @@
  * License Option 2: Broadcom Open Network Switch APIs (OpenNSA) license
  * 
  * This software is governed by the Broadcom Open Network Switch APIs license:
- * https://www.broadcom.com/products/ethernet-connectivity/software/opennsa
- */
-/*
- * $Id: lkm.h,v 1.22 Broadcom SDK $
- * $Copyright: (c) 2005 Broadcom Corp.
- * All Rights Reserved.$
+ * https://www.broadcom.com/products/ethernet-connectivity/software/opennsa $
+ * 
+ * 
  */
 
 #ifndef __COMMON_LINUX_KRN_LKM_H__
@@ -42,13 +40,10 @@
 
 #include <linux/init.h>
 #include <linux/version.h>
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
-#include <linux/config.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,1,0)
+#error Kernel too old
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,32)
-/* The version kconfig.h became available in. */
 #include <linux/kconfig.h>
-#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 #if defined(INCLUDE_KNET) && LINUX_VERSION_CODE >= KERNEL_VERSION(4,0,0)
 #ifdef CONFIG_NF_CONNTRACK_MODULE
@@ -57,17 +52,10 @@
 #endif
 #include <linux/slab.h>
 #endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,39)
-#include <linux/smp_lock.h>
-#endif
 #include <linux/module.h>
 
 /* Helper defines for multi-version kernel  support */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
-#define LKM_2_4
-#else
 #define LKM_2_6
-#endif
 
 #include <linux/kernel.h>   /* printk() */
 #include <linux/fs.h>       /* everything... */
@@ -96,23 +84,10 @@
 
 /* Compatibility Macros */
 
-#ifdef LKM_2_4
-
-#include <linux/compatmac.h>
-#include <linux/wrapper.h>
-#define LKM_MOD_PARAM(n,ot,nt,d) MODULE_PARM(n,ot)
-#define LKM_MOD_PARAM_ARRAY(n,ot,nt,c,d) MODULE_PARM(n,ot)
-#define LKM_EXPORT_SYM(s)
-#define _free_netdev kfree
-
-#else /* LKM_2_6 */
-
 #define LKM_MOD_PARAM(n,ot,nt,d) module_param(n,nt,d)
 #define LKM_MOD_PARAM_ARRAY(n,ot,nt,c,d) module_param_array(n,nt,c,d)
 #define LKM_EXPORT_SYM(s) EXPORT_SYMBOL(s)
 #define _free_netdev free_netdev
-
-#endif /* LKM_2_x */
 
 #ifndef list_for_each_safe
 #define list_for_each_safe(l,t,i) t = 0; list_for_each((l),(i))
@@ -160,6 +135,24 @@
 
 #ifdef CONFIG_BCM98245
 #define CONFIG_BMW
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,8,0)
+#define DMA_FORCE_CONTIGUOUS NULL
+#else
+#define DMA_FORCE_CONTIGUOUS DMA_ATTR_FORCE_CONTIGUOUS
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0)
+#define PROC_OWNER(_m)
+#else
+#define PROC_OWNER(_m) .owner = _m,
+#define proc_ops file_operations
+#define proc_open open
+#define proc_read read
+#define proc_write write
+#define proc_lseek llseek
+#define proc_release release
 #endif
 
 #if PROC_INTERFACE_KERN_VER_3_10

@@ -1,5 +1,5 @@
 {
-    "LOOPBACK_IPPREFIX_PORT_MUST_CONDITION_FALSE": {
+    "LOOPBACK_IPPREFIX_PORT_FOR_NON_EXIST_INTERFACE": {
         "sonic-loopback-interface:sonic-loopback-interface": {
             "sonic-loopback-interface:LOOPBACK_INTERFACE": {
                 "LOOPBACK_INTERFACE_IPPREFIX_LIST": [
@@ -47,6 +47,26 @@
                 "LOOPBACK_INTERFACE_LIST": [
                     {
                         "name": "lo1",
+                        "nat_zone": "2"
+                    }
+                ]
+            }
+        }
+    },
+    "LOOPBACK_INVALID_INTERFACE_NAME_LENGTH": {
+        "sonic-loopback-interface:sonic-loopback-interface": {
+            "sonic-loopback-interface:LOOPBACK_INTERFACE": {
+                "LOOPBACK_INTERFACE_IPPREFIX_LIST": [
+                    {
+                        "family": "IPv4",
+                        "ip-prefix": "10.0.0.1/30",
+                        "name": "lo1lo1lo1lo1lo1lo1",
+                        "scope": "global"
+                    }
+                ],
+                "LOOPBACK_INTERFACE_LIST": [
+                    {
+                        "name": "lo1lo1lo1lo1lo1lo1",
                         "nat_zone": "2"
                     }
                 ]

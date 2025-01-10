@@ -1,14 +1,26 @@
-BRCM_SAI = libsaibcm_6.0.0.10-1_amd64.deb
-$(BRCM_SAI)_URL = "https://sonicstorage.blob.core.windows.net/packages/bcmsai/6.0/master/XGS/libsaibcm_6.0.0.10-1_amd64.deb?sv=2015-04-05&sr=b&sig=5fW6otWPCPrsSIXeomEcllS8sEDXMo0YOD8UhB370U0%3D&se=2035-07-22T20%3A50%3A51Z&sp=r"
-BRCM_SAI_DEV = libsaibcm-dev_6.0.0.10-1_amd64.deb
-$(eval $(call add_derived_package,$(BRCM_SAI),$(BRCM_SAI_DEV)))
-$(BRCM_SAI_DEV)_URL = "https://sonicstorage.blob.core.windows.net/packages/bcmsai/6.0/master/XGS/libsaibcm-dev_6.0.0.10-1_amd64.deb?sv=2015-04-05&sr=b&sig=8h7bO9EizzMXduSOf%2Ffc3JH0EcHxcE8p51LyUw0CA6o%3D&se=2035-07-22T20%3A51%3A57Z&sp=r"
+LIBSAIBCM_XGS_VERSION = 12.1.0.2
+LIBSAIBCM_DNX_VERSION = 11.2.13.1-1
+LIBSAIBCM_XGS_BRANCH_NAME = SAI_12.1.0_GA
+LIBSAIBCM_DNX_BRANCH_NAME = SAI_11.2.0_GA
+LIBSAIBCM_XGS_URL_PREFIX = "https://sonicstorage.blob.core.windows.net/public/sai/sai-broadcom/$(LIBSAIBCM_XGS_BRANCH_NAME)/$(LIBSAIBCM_XGS_VERSION)/xgs"
+LIBSAIBCM_DNX_URL_PREFIX = "https://sonicstorage.blob.core.windows.net/public/sai/sai-broadcom/$(LIBSAIBCM_DNX_BRANCH_NAME)/$(LIBSAIBCM_DNX_VERSION)/dnx"
+
+BRCM_XGS_SAI = libsaibcm_$(LIBSAIBCM_XGS_VERSION)_amd64.deb
+$(BRCM_XGS_SAI)_URL = "$(LIBSAIBCM_XGS_URL_PREFIX)/$(BRCM_XGS_SAI)"
+BRCM_XGS_SAI_DEV = libsaibcm-dev_$(LIBSAIBCM_XGS_VERSION)_amd64.deb
+$(eval $(call add_derived_package,$(BRCM_XGS_SAI),$(BRCM_XGS_SAI_DEV)))
+$(BRCM_XGS_SAI_DEV)_URL = "$(LIBSAIBCM_XGS_URL_PREFIX)/$(BRCM_XGS_SAI_DEV)"
 
 # SAI module for DNX Asic family
-BRCM_DNX_SAI = libsaibcm_dnx_6.0.0.10-1_amd64.deb
-$(BRCM_DNX_SAI)_URL = "https://sonicstorage.blob.core.windows.net/packages/bcmsai/6.0/master/DNX/libsaibcm_dnx_6.0.0.10-1_amd64.deb?sv=2015-04-05&sr=b&sig=J1lE1SI1Mtwrl0vZ2tAPvkNLKpkyz2XVgRe98DnPNfo%3D&se=2035-07-22T20%3A53%3A24Z&sp=r"
+BRCM_DNX_SAI = libsaibcm_dnx_$(LIBSAIBCM_DNX_VERSION)_amd64.deb
+$(BRCM_DNX_SAI)_URL = "$(LIBSAIBCM_DNX_URL_PREFIX)/$(BRCM_DNX_SAI)"
 
-SONIC_ONLINE_DEBS += $(BRCM_SAI)
+SONIC_ONLINE_DEBS += $(BRCM_XGS_SAI)
 SONIC_ONLINE_DEBS += $(BRCM_DNX_SAI)
-$(BRCM_SAI_DEV)_DEPENDS += $(BRCM_SAI)
-$(eval $(call add_conflict_package,$(BRCM_SAI_DEV),$(LIBSAIVS_DEV)))
+$(BRCM_XGS_SAI_DEV)_DEPENDS += $(BRCM_XGS_SAI)
+
+$(BRCM_XGS_SAI)_SKIP_VERSION=y
+$(BRCM_XGS_SAI_DEV)_SKIP_VERSION=y
+$(BRCM_DNX_SAI)_SKIP_VERSION=y
+
+$(eval $(call add_conflict_package,$(BRCM_XGS_SAI_DEV),$(LIBSAIVS_DEV)))

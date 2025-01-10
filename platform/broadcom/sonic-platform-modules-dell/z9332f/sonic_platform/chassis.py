@@ -28,7 +28,7 @@ MAX_Z9332F_FANTRAY = 7
 MAX_Z9332F_FAN = 2
 MAX_Z9332F_PSU = 2
 MAX_Z9332F_THERMAL = 14
-MAX_Z9332F_COMPONENT = 8 # BIOS,FPGA,BMC,BB CPLD,2 Switch CPLDs,SSD and PCIe
+MAX_Z9332F_COMPONENT = 9 # BIOS,FPGA,BMC,BB CPLD,2 Switch CPLDs,SSD,PCIe and ONIE
 
 media_part_num_list = set([ \
 "8T47V","XTY28","MHVPK","GF76J","J6FGD","F1KMV","9DN5J","H4DHD","6MCNV","0WRX0","X7F70","5R2PT","WTRD1","WTRD1","WTRD1","WTRD1","5250G","WTRD1","C5RNH","C5RNH","FTLX8571D3BCL-FC",
@@ -74,41 +74,41 @@ class Chassis(ChassisBase):
 
     _global_port_pres_dict = {}
     _port_to_i2c_mapping = {
-            1:  4,
-            2:  5,
-            3:  6,
-            4:  7,
-            5:  8,
-            6:  9,
-            7:  10,
-            8:  11,
-            9:  12,
-            10: 13,
-            11: 14,
-            12: 15,
-            13: 16,
-            14: 17,
-            15: 18,
-            16: 19,
-            17: 20,
-            18: 21,
-            19: 22,
-            20: 23,
-            21: 24,
-            22: 25,
-            23: 26,
-            24: 27,
-            25: 28,
-            26: 29,
-            27: 30,
-            28: 31,
-            29: 32,
-            30: 33,
-            31: 34,
-            32: 35,
-            33: 1,
-            34: 2,
-            }
+        1:  10,
+        2:  11,
+        3:  12,
+        4:  13,
+        5:  14,
+        6:  15,
+        7:  16,
+        8:  17,
+        9:  18,
+        10: 19,
+        11: 20,
+        12: 21,
+        13: 22,
+        14: 23,
+        15: 24,
+        16: 25,
+        17: 26,
+        18: 27,
+        19: 28,
+        20: 29,
+        21: 30,
+        22: 31,
+        23: 32,
+        24: 33,
+        25: 34,
+        26: 35,
+        27: 36,
+        28: 37,
+        29: 38,
+        30: 39,
+        31: 40,
+        32: 41,
+        33: 1,
+        34: 2
+    }
 
     reboot_reason_dict = { 0x11: (ChassisBase.REBOOT_CAUSE_POWER_LOSS, "Power on reset"),
                            0x22: (ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER, "Soft-set CPU warm reset"),
@@ -147,8 +147,7 @@ class Chassis(ChassisBase):
         self._component_list = [Component(i) for i in range(MAX_Z9332F_COMPONENT)]
         for port_num in range(self.PORT_START, self.PORTS_IN_BLOCK):
             # sfp get uses zero-indexing, but port numbers start from 1
-            presence = self.get_sfp(port_num).get_presence()
-            self._global_port_pres_dict[port_num] = '1' if presence else '0'
+            self._global_port_pres_dict[port_num] = '0'
 
         self._watchdog = Watchdog()
     def __del__(self):
@@ -175,6 +174,7 @@ class Chassis(ChassisBase):
                 if(presence and self._global_port_pres_dict[port_num] == '0'):
                     self._global_port_pres_dict[port_num] = '1'
                     port_dict[port_num] = '1'
+                    self.get_sfp(port_num)._initialize_media(delay=True)
                 elif(not presence and
                         self._global_port_pres_dict[port_num] == '1'):
                     self._global_port_pres_dict[port_num] = '0'

@@ -1,7 +1,7 @@
 {
-    "LOOPBACK_IPPREFIX_PORT_MUST_CONDITION_FALSE": {
-	"desc": "Loopback Ip-prefix port-name must condition failure.",
-	"eStrKey" : "Must"
+    "LOOPBACK_IPPREFIX_PORT_FOR_NON_EXIST_INTERFACE": {
+        "desc": "Configure Loopback Ip-prefix for non-existing Loopback interface.",
+        "eStrKey" : "LeafRef"
     },
     "LOOPBACK_INTERFACE_WRONG_NAT_ZONE_RANGE": {
         "desc": "Configure wrong value for nat zone.",
@@ -9,5 +9,9 @@
     },
     "LOOPBACK_INTERFACE_VALID_NAT_ZONE_RANGE": {
         "desc": "Configure valid value for nat zone."
+    },
+    "LOOPBACK_INVALID_INTERFACE_NAME_LENGTH": {
+        "desc": "Configure invalid value for loopback interface name length.",
+        "eStr" : "Invalid interface name length, it must not exceed 16 characters."
     }
 }

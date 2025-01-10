@@ -2,8 +2,16 @@ module sonic-flex_counter {
 
     yang-version 1.1;
 
-    namespace "http://github.com/Azure/sonic-flex_counter";
+    namespace "http://github.com/sonic-net/sonic-flex_counter";
     prefix flex_counter;
+
+    import ietf-inet-types {
+        prefix inet;
+    }
+
+    import sonic-types {
+        prefix stypes;
+    }
 
     description "FLEX COUNTER YANG Module for SONiC OS";
 
@@ -24,7 +32,19 @@ module sonic-flex_counter {
             }
 
             typedef flex_delay_status {
-                type boolean;
+                type stypes:boolean_type;
+            }
+
+            typedef poll_interval {
+                type uint32 {
+                    range 100..4294967295;
+                }
+            }
+
+            typedef bulk_chunk_size {
+                type uint32 {
+                    range 1..4294967295;
+                }
             }
 
             description "FLEX_COUNTER_TABLE part of config_db.json";
@@ -39,6 +59,9 @@ module sonic-flex_counter {
                 leaf FLEX_COUNTER_DELAY_STATUS {
                     type flex_delay_status;
                 }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
             }
 
             container DEBUG_COUNTER {
@@ -48,6 +71,19 @@ module sonic-flex_counter {
                 }
                 leaf FLEX_COUNTER_DELAY_STATUS {
                     type flex_delay_status;
+                }
+            }
+
+            container ENI {
+                /* ENI_STAT_COUNTER_FLEX_COUNTER_GROUP */
+                leaf FLEX_COUNTER_STATUS {
+                    type flex_status;
+                }
+                leaf FLEX_COUNTER_DELAY_STATUS {
+                    type flex_delay_status;
+                }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
                 }
             }
 
@@ -69,6 +105,12 @@ module sonic-flex_counter {
                 leaf FLEX_COUNTER_DELAY_STATUS {
                     type flex_delay_status;
                 }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+                leaf BULK_CHUNK_SIZE {
+                    type bulk_chunk_size;
+                }
             }
 
             container PG_WATERMARK {
@@ -78,6 +120,12 @@ module sonic-flex_counter {
                 }
                 leaf FLEX_COUNTER_DELAY_STATUS {
                     type flex_delay_status;
+                }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+                leaf BULK_CHUNK_SIZE {
+                    type bulk_chunk_size;
                 }
             }
 
@@ -89,10 +137,16 @@ module sonic-flex_counter {
                 leaf FLEX_COUNTER_DELAY_STATUS {
                     type flex_delay_status;
                 }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+                leaf BULK_CHUNK_SIZE {
+                    type bulk_chunk_size;
+                }
             }
 
             container PORT_RATES {
-                /* PORT_BUFFER_DROP_COUNTER_FLEX_COUNTER_GROUP */
+                /* PORT_RATES_COUNTER_FLEX_COUNTER_GROUP */
                 leaf FLEX_COUNTER_STATUS {
                     type flex_status;
                 }
@@ -109,6 +163,12 @@ module sonic-flex_counter {
                 leaf FLEX_COUNTER_DELAY_STATUS {
                     type flex_delay_status;
                 }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+                leaf BULK_CHUNK_SIZE {
+                    type bulk_chunk_size;
+                }
             }
 
             container QUEUE {
@@ -118,6 +178,12 @@ module sonic-flex_counter {
                 }
                 leaf FLEX_COUNTER_DELAY_STATUS {
                     type flex_delay_status;
+                }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+                leaf BULK_CHUNK_SIZE {
+                    type bulk_chunk_size;
                 }
             }
 
@@ -129,6 +195,12 @@ module sonic-flex_counter {
                 leaf FLEX_COUNTER_DELAY_STATUS {
                     type flex_delay_status;
                 }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+                leaf BULK_CHUNK_SIZE {
+                    type bulk_chunk_size;
+                }
             }
 
             container RIF {
@@ -138,6 +210,9 @@ module sonic-flex_counter {
                 }
                 leaf FLEX_COUNTER_DELAY_STATUS {
                     type flex_delay_status;
+                }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
                 }
             }
 
@@ -159,10 +234,126 @@ module sonic-flex_counter {
                 leaf FLEX_COUNTER_DELAY_STATUS {
                     type flex_delay_status;
                 }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+            }
+
+            container FLOW_CNT_TRAP {
+                /* HOSTIF_TRAP_COUNTER_FLEX_COUNTER_GROUP */
+                leaf FLEX_COUNTER_STATUS {
+                    type flex_status;
+                }
+                leaf FLEX_COUNTER_DELAY_STATUS {
+                    type flex_delay_status;
+                }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+            }
+
+            container FLOW_CNT_ROUTE {
+                /* ROUTE_FLEX_COUNTER_GROUP */
+                leaf FLEX_COUNTER_STATUS {
+                    type flex_status;
+                }
+                leaf FLEX_COUNTER_DELAY_STATUS {
+                    type flex_delay_status;
+                }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+            }
+
+            container TUNNEL {
+                /* TUNNEL_STAT_COUNTER_FLEX_COUNTER_GROUP */
+                leaf FLEX_COUNTER_STATUS {
+                    type flex_status;
+                }
+                leaf FLEX_COUNTER_DELAY_STATUS {
+                    type flex_delay_status;
+                }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+            }
+
+            container WRED_ECN_QUEUE {
+                /* WRED_ECN_QUEUE_FLEX_COUNTER_GROUP  */
+                leaf FLEX_COUNTER_STATUS {
+                    type flex_status;
+                }
+                leaf FLEX_COUNTER_DELAY_STATUS {
+                    type flex_delay_status;
+                }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
+            }
+
+            container WRED_ECN_PORT {
+                /* WRED_ECN_QUEUE_FLEX_COUNTER_GROUP */
+                leaf FLEX_COUNTER_STATUS {
+                    type flex_status;
+                }
+                leaf FLEX_COUNTER_DELAY_STATUS {
+                    type flex_delay_status;
+                }
+                leaf POLL_INTERVAL {
+                    type poll_interval;
+                }
             }
 
         }
         /* end of container FLEX_COUNTER_TABLE */
+
+        container FLOW_COUNTER_ROUTE_PATTERN {
+            description "Flow counter route pattern of config_db.json";
+
+            list FLOW_COUNTER_ROUTE_PATTERN_LIST {
+
+                key "ip_prefix";
+
+                leaf ip_prefix {
+                    type inet:ip-prefix;
+                }
+
+                leaf max_match_count {
+                    type uint32 {
+                        range 1..50;
+                    }
+                }
+
+            }
+
+            list FLOW_COUNTER_ROUTE_PATTERN_VRF_LIST {
+
+                key "vrf_name ip_prefix";
+
+                leaf vrf_name {
+                    /*
+                    We don't use vrf_name reference here because:
+                    1. User is allowed to configure a VRF that does not exist yet here, orchagent is designed to resolve the VRF name once the VRF is created.
+                    2. The field vrf_name accept both VRF name and VNET name.
+                    */
+                    type string {
+                        length 0..16;
+                    }
+                }
+
+                leaf ip_prefix {
+                    type inet:ip-prefix;
+                }
+
+                leaf max_match_count {
+                    type uint32 {
+                        range 1..50;
+                    }
+                }
+
+            }
+        }
+        /* end of container FLOW_COUNTER_ROUTE_PATTERN */
     }
     /* end of top level container */
 }

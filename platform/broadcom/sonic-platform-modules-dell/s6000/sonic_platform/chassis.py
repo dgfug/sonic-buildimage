@@ -10,6 +10,7 @@
 try:
     import os
     import time
+    import subprocess
     import struct
     from sonic_platform_base.chassis_base import ChassisBase
     from sonic_platform.sfp import Sfp
@@ -27,6 +28,14 @@ MAX_S6000_PSU = 2
 MAX_S6000_THERMAL = 6
 MAX_S6000_COMPONENT = 4
 
+HYST_RANGE = 5
+LEVEL0_THRESHOLD = 25
+LEVEL1_THRESHOLD = 30
+LEVEL2_THRESHOLD = 45
+LEVEL3_THRESHOLD = 60
+LEVEL4_THRESHOLD = 80
+LEVEL5_THRESHOLD = 85
+
 
 class Chassis(ChassisBase):
     """
@@ -41,6 +50,13 @@ class Chassis(ChassisBase):
     reset_reason_dict[0xe] = ChassisBase.REBOOT_CAUSE_NON_HARDWARE
     reset_reason_dict[0x6] = ChassisBase.REBOOT_CAUSE_NON_HARDWARE
     reset_reason_dict[0x7] = ChassisBase.REBOOT_CAUSE_THERMAL_OVERLOAD_OTHER
+
+    _num_monitor_thermals = 3
+    _monitor_thermal_list = []
+    _is_fan_control_enabled = False
+    _fan_control_initialised = False
+
+    _global_port_pres_dict = {}
 
     def __init__(self):
         ChassisBase.__init__(self)
@@ -93,6 +109,9 @@ class Chassis(ChassisBase):
             component = Component(i)
             self._component_list.append(component)
 
+        for port_num in range(self.PORT_START, (self.PORT_END + 1)):
+            self._global_port_pres_dict[port_num] = '0'
+
     def _get_cpld_register(self, reg_name):
         rv = 'ERR'
         mb_reg_file = self.CPLD_DIR+'/'+reg_name
@@ -142,20 +161,12 @@ class Chassis(ChassisBase):
             return
         os.close(fd)
 
-    def _get_thermal_reset(self):
-        reset_file = "/host/reboot-cause/reboot-cause.txt"
-        if (not os.path.isfile(reset_file)):
-            return False
-        try:
-            with open(reset_file, 'r') as fd:
-                rv = fd.read()
-        except Exception as error:
-            return False
+    def _init_fan_control(self):
 
-        if "Thermal Overload" in rv:
-            return True
-
-        return False
+        if not self._fan_control_initialised:
+            for i in range(self._num_monitor_thermals):
+                self._monitor_thermal_list.append(Thermal(i))
+            self._fan_control_initialised = True
 
     def get_name(self):
         """
@@ -225,6 +236,15 @@ class Chassis(ChassisBase):
         """
         return self._eeprom.get_base_mac()
 
+    def get_revision(self):
+        """
+        Retrieves the hardware revision of the device
+
+        Returns:
+            string: Revision value of device
+        """
+        return self._eeprom.get_revision()
+
     def get_system_eeprom_info(self):
         """
         Retrieves the full content of system EEPROM information for the
@@ -245,9 +265,6 @@ class Chassis(ChassisBase):
         # NVRAM. Only Warmboot and Coldboot reason are supported here.
         # Since it does not support any hardware reason, we return
         # non_hardware as default
-        if self._get_thermal_reset() == True:
-            self._nvram_write(0x49, 0x7)
-
         lrr = self._get_cpld_register('last_reboot_reason')
         if (lrr != 'ERR'):
             reset_reason = int(lrr, base=16)
@@ -382,3 +399,77 @@ class Chassis(ChassisBase):
             return status_led
         else:
             return None
+
+    def get_thermal_manager(self):
+        """
+        Retrieves thermal manager class on this chassis
+
+        Returns:
+            A class derived from ThermalManagerBase representing the
+            specified thermal manager
+        """
+        from .thermal_manager import ThermalManager
+        return ThermalManager
+
+    def set_fan_control_status(self, enable):
+
+        if enable and not self._is_fan_control_enabled:
+            self._init_fan_control()
+            for thermal in self._monitor_thermal_list:
+                thermal.set_high_threshold(LEVEL5_THRESHOLD, force=True)
+            self._is_fan_control_enabled = True
+        elif not enable and self._is_fan_control_enabled:
+            for thermal in self._monitor_thermal_list:
+                thermal.set_high_threshold(LEVEL4_THRESHOLD, force=True)
+            self._is_fan_control_enabled = False
+
+    def get_monitor_thermals(self):
+        return self._monitor_thermal_list
+
+    def thermal_shutdown(self):
+        # Update reboot cause
+        self._nvram_write(0x49, 0x7)
+
+        subprocess.call('sync')
+        time.sleep(1)
+        for thermal in self._monitor_thermal_list:
+            thermal.set_high_threshold(LEVEL4_THRESHOLD, force=True)
+
+    @staticmethod
+    def get_system_thermal_level(curr_thermal_level, system_temperature):
+
+        def get_level_in_hystersis(curr_level, level1, level2):
+            if curr_level != level1 and curr_level != level2:
+                return level1 if abs(curr_level - level1) < abs(curr_level - level2) else level2
+            else:
+                return curr_level
+
+        if system_temperature < LEVEL0_THRESHOLD:
+            curr_thermal_level = 0
+        elif LEVEL0_THRESHOLD <= system_temperature < LEVEL1_THRESHOLD:
+            curr_thermal_level = get_level_in_hystersis(curr_thermal_level, 0, 1)
+        elif LEVEL1_THRESHOLD <= system_temperature <= (LEVEL2_THRESHOLD - HYST_RANGE):
+            curr_thermal_level = 1
+        elif (LEVEL2_THRESHOLD - HYST_RANGE) < system_temperature < LEVEL2_THRESHOLD:
+            curr_thermal_level = get_level_in_hystersis(curr_thermal_level, 1, 2)
+        elif LEVEL2_THRESHOLD <= system_temperature <= (LEVEL3_THRESHOLD - HYST_RANGE):
+            curr_thermal_level = 2
+        elif (LEVEL3_THRESHOLD - HYST_RANGE) < system_temperature < LEVEL3_THRESHOLD:
+            curr_thermal_level = get_level_in_hystersis(curr_thermal_level, 2, 3)
+        elif LEVEL3_THRESHOLD <= system_temperature < LEVEL4_THRESHOLD:
+            curr_thermal_level = 3
+        else:
+            curr_thermal_level = 4
+
+        return curr_thermal_level
+
+    @staticmethod
+    def is_over_temperature(temperature_list):
+
+        over_temperature = False
+        for temperature in temperature_list:
+            if temperature > LEVEL4_THRESHOLD:
+                over_temperature = True
+                break
+
+        return over_temperature

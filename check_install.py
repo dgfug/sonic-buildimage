@@ -11,19 +11,17 @@ def main():
     parser = argparse.ArgumentParser(description='test_login cmdline parser')
     parser.add_argument('-u', default="admin", help='login user name')
     parser.add_argument('-P', default="YourPaSsWoRd", help='login password')
+    parser.add_argument('-N', default="Test@2022", help='new password')
     parser.add_argument('-p', type=int, default=9000, help='local port')
 
     args = parser.parse_args()
-
-    KEY_UP = '\x1b[A'
-    KEY_DOWN = '\x1b[B'
-    KEY_RIGHT = '\x1b[C'
-    KEY_LEFT = '\x1b[D'
 
     login_prompt = 'sonic login:'
     passwd_prompt = 'Password:'
     cmd_prompt = "{}@sonic:~\$ $".format(args.u)
     grub_selection = "The highlighted entry will be executed"
+    firsttime_prompt = 'firsttime_exit'
+    passwd_change_prompt = ['Current password:', 'New password:', 'Retype new password:']
 
     i = 0
     while True:
@@ -37,21 +35,45 @@ def main():
                 raise
             time.sleep(1)
 
-    # select ONIE embed
+    # select default SONiC Image
     p.expect(grub_selection)
-    p.sendline(KEY_DOWN)
-
-    # install sonic image
+    p.sendline()
+    # bootup sonic image
     while True:
-        i = p.expect([login_prompt, passwd_prompt, grub_selection, cmd_prompt])
+        i = p.expect([login_prompt, passwd_prompt, firsttime_prompt, cmd_prompt])
         if i == 0:
             # send user name
             p.sendline(args.u)
         elif i == 1:
             # send password
             p.sendline(args.P)
+            # Check for password change prompt
+            try:
+                p.expect('Current password:', timeout=2)
+            except pexpect.TIMEOUT:
+                break
+            else:
+                # send old password for password prompt
+                p.sendline(args.P)
+                p.expect(passwd_change_prompt[1])
+                # send new password
+                p.sendline(args.N)
+                p.expect(passwd_change_prompt[2])
+                # retype new password
+                p.sendline(args.N)
+                time.sleep(1)
+                # Restore default password
+                p.sendline('passwd {}'.format(args.u))
+                p.expect(passwd_change_prompt[0])
+                p.sendline(args.N)
+                p.expect(passwd_change_prompt[1])
+                p.sendline(args.P)
+                p.expect(passwd_change_prompt[2])
+                p.sendline(args.P)
+                break
         elif i == 2:
-            # select onie install
+            # fix a login timeout issue, caused by the login_prompt message mixed with the output message of the rc.local
+            time.sleep(1)
             p.sendline()
         else:
             break

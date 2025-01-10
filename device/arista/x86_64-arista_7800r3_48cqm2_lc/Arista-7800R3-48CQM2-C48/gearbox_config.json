@@ -5,12 +5,13 @@
       "name": "phy1",
       "address": "1",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy1_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio0_0_0/0"
     },
     {
@@ -18,12 +19,13 @@
       "name": "phy2",
       "address": "2",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy2_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio1_0_0/0"
     },
     {
@@ -31,12 +33,13 @@
       "name": "phy3",
       "address": "3",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy3_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio2_0_0/0"
     },
     {
@@ -44,12 +47,13 @@
       "name": "phy4",
       "address": "4",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy4_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio3_0_0/0"
     },
     {
@@ -57,12 +61,13 @@
       "name": "phy5",
       "address": "5",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy5_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio4_0_0/0"
     },
     {
@@ -70,12 +75,13 @@
       "name": "phy6",
       "address": "6",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy6_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio5_0_0/0"
     },
     {
@@ -83,12 +89,13 @@
       "name": "phy7",
       "address": "7",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy7_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio6_0_0/0"
     },
     {
@@ -96,12 +103,13 @@
       "name": "phy8",
       "address": "8",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy8_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio7_0_0/0"
     },
     {
@@ -109,12 +117,13 @@
       "name": "phy9",
       "address": "9",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy9_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio8_0_0/0"
     },
     {
@@ -122,12 +131,13 @@
       "name": "phy10",
       "address": "10",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy10_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio9_0_0/0"
     },
     {
@@ -135,12 +145,13 @@
       "name": "phy11",
       "address": "11",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy11_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio10_0_0/0"
     },
     {
@@ -148,12 +159,13 @@
       "name": "phy12",
       "address": "12",
       "lib_name": "",
-      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.92.1.bin",
+      "firmware_path": "/usr/etc/credo/firmware/owl.lz4.fw.1.94.0.bin",
       "config_file": "/usr/share/sonic/hwsku/phy12_config.json",
       "sai_init_config_file": "",
       "phy_access": "mdio",
       "bus_id": 0,
       "context_id": 1,
+      "macsec_ipg": 352,
       "hwinfo": "mdio11_0_0/0"
     }
   ],

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2021 NVIDIA CORPORATION & AFFILIATES.
+# Copyright (c) 2019-2023 NVIDIA CORPORATION & AFFILIATES.
 # Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,8 @@ try:
     from sonic_py_common.logger import Logger
     from .led import ComponentFaultyIndicator
     from . import utils
+    from .thermal import Thermal
+    from .fan_drawer import VirtualDrawer
 except ImportError as e:
     raise ImportError (str(e) + "- required module not found")
 
@@ -44,13 +46,14 @@ CONFIG_PATH = "/var/run/hw-management/config"
 FAN_DIR = "/var/run/hw-management/thermal/fan{}_dir"
 FAN_DIR_VALUE_EXHAUST = 0
 FAN_DIR_VALUE_INTAKE = 1
-COOLING_STATE_PATH = "/var/run/hw-management/thermal/cooling_cur_state"
-
+FAN_DIR_VALUE_NOT_APPLICABLE = 2
+FAN_DIR_MAPPING = {
+    FAN_DIR_VALUE_EXHAUST: FanBase.FAN_DIRECTION_EXHAUST,
+    FAN_DIR_VALUE_INTAKE: FanBase.FAN_DIRECTION_INTAKE,
+    FAN_DIR_VALUE_NOT_APPLICABLE: FanBase.FAN_DIRECTION_NOT_APPLICABLE,
+}
 
 class MlnxFan(FanBase):
-    MIN_VALID_COOLING_LEVEL = 1
-    MAX_VALID_COOLING_LEVEL = 10
-    
     def __init__(self, fan_index, position):
         super(MlnxFan, self).__init__()
         self.index = fan_index + 1
@@ -88,7 +91,7 @@ class MlnxFan(FanBase):
                    fan module status LED
 
         Returns:
-            bool: True if set success, False if fail. 
+            bool: True if set success, False if fail.
         """
         return self.led.set_status(color)
 
@@ -129,35 +132,18 @@ class MlnxFan(FanBase):
         return False
 
     @classmethod
-    def set_cooling_level(cls, level, cur_state):
-        """
-        Change cooling level. The input level should be an integer value [1, 10].
-        1 means 10%, 2 means 20%, 10 means 100%.
-        """
-        if level < cls.MIN_VALID_COOLING_LEVEL or level > cls.MAX_VALID_COOLING_LEVEL:
-            raise RuntimeError("Failed to set cooling level, level value must be in range [{}, {}], got {}".format(
-                cls.MIN_VALID_COOLING_LEVEL,
-                cls.MAX_VALID_COOLING_LEVEL,
-                level
-                ))
-
+    def get_fan_direction(cls, dir_path):
         try:
-            # Reset FAN cooling level vector. According to low level team,
-            # if we need set cooling level to X, we need first write a (10+X) 
-            # to cooling_cur_state file to reset the cooling level vector.
-            utils.write_file(COOLING_STATE_PATH, level + 10, raise_exception=True)
-
-            # We need set cooling level after resetting the cooling level vector 
-            utils.write_file(COOLING_STATE_PATH, cur_state, raise_exception=True)
+            fan_dir = utils.read_int_from_file(dir_path, raise_exception=True)
+            ret = FAN_DIR_MAPPING.get(fan_dir)
+            if ret is None:
+                logger.log_error(f"Got wrong value {fan_dir} for fan direction {dir_path}")
+                return FanBase.FAN_DIRECTION_NOT_APPLICABLE
+            else:
+                return ret
         except (ValueError, IOError) as e:
-            raise RuntimeError("Failed to set cooling level - {}".format(e))
-
-    @classmethod
-    def get_cooling_level(cls):
-        try:
-            return utils.read_int_from_file(COOLING_STATE_PATH, raise_exception=True)
-        except (ValueError, IOError) as e:
-            raise RuntimeError("Failed to get cooling level - {}".format(e))
+            logger.log_error(f"Failed to read fan direction from {dir_path} - {e}")
+            return FanBase.FAN_DIRECTION_NOT_APPLICABLE
 
 
 class PsuFan(MlnxFan):
@@ -179,27 +165,32 @@ class PsuFan(MlnxFan):
         self.psu_i2c_bus_path = os.path.join(CONFIG_PATH, 'psu{0}_i2c_bus'.format(self.index))
         self.psu_i2c_addr_path = os.path.join(CONFIG_PATH, 'psu{0}_i2c_addr'.format(self.index))
         self.psu_i2c_command_path = os.path.join(CONFIG_PATH, 'fan_command')
+        self.psu_fan_dir_path = os.path.join(FAN_PATH, "psu{}_fan_dir".format(self.index))
 
     def get_direction(self):
         """
         Retrieves the fan's direction
 
         Returns:
-            A string, either FAN_DIRECTION_INTAKE or FAN_DIRECTION_EXHAUST
+            A string, either FAN_DIRECTION_INTAKE or FAN_DIRECTION_EXHAUST or FAN_DIRECTION_NOT_APPLICABLE
             depending on fan direction
 
         Notes:
-            What Mellanox calls forward: 
+            What Mellanox calls forward:
             Air flows from fans side to QSFP side, for example: MSN2700-CS2F
             which means intake in community
             What Mellanox calls reverse:
             Air flow from QSFP side to fans side, for example: MSN2700-CS2R
             which means exhaust in community
             According to hw-mgmt:
+                2 stands for N/A, in case fan direction could not be determined
                 1 stands for forward, in other words intake
                 0 stands for reverse, in other words exhaust
         """
-        return self.FAN_DIRECTION_NOT_APPLICABLE
+        if not os.path.exists(self.psu_fan_dir_path) or not self.get_presence():
+            return self.FAN_DIRECTION_NOT_APPLICABLE
+
+        return MlnxFan.get_fan_direction(self.psu_fan_dir_path)
 
     def get_status(self):
         """
@@ -228,7 +219,10 @@ class PsuFan(MlnxFan):
         """
         try:
             # Get PSU fan target speed according to current system cooling level
-            cooling_level = self.get_cooling_level()
+            pwm = utils.read_int_from_file('/run/hw-management/thermal/pwm1', log_func=None)
+            if pwm >= PWM_MAX:
+                pwm = PWM_MAX - 1
+            cooling_level = int(pwm / PWM_MAX * 10)
             return int(self.PSU_FAN_SPEED[cooling_level], 16)
         except Exception:
             return self.get_speed()
@@ -242,7 +236,7 @@ class PsuFan(MlnxFan):
                    in the range 0 (off) to 100 (full speed)
 
         Returns:
-            bool: True if set success, False if fail. 
+            bool: True if set success, False if fail.
         """
         if not self.get_presence():
             return False
@@ -252,8 +246,8 @@ class PsuFan(MlnxFan):
             addr = utils.read_str_from_file(self.psu_i2c_addr_path, raise_exception=True)
             command = utils.read_str_from_file(self.psu_i2c_command_path, raise_exception=True)
             speed = self.PSU_FAN_SPEED[int(speed // 10)]
-            command = "i2cset -f -y {0} {1} {2} {3} wp".format(bus, addr, command, speed)
-            subprocess.check_call(command, shell = True, universal_newlines=True)
+            command = ["i2cset", "-f", "-y", bus, addr, command, speed, "wp"]
+            subprocess.check_call(command, universal_newlines=True)
             return True
         except subprocess.CalledProcessError as ce:
             logger.log_error('Failed to call command {}, return code={}, command output={}'.format(ce.cmd, ce.returncode, ce.output))
@@ -262,14 +256,12 @@ class PsuFan(MlnxFan):
             logger.log_error('Failed to set PSU FAN speed - {}'.format(e))
             return False
 
+
 class Fan(MlnxFan):
     """Platform-specific Fan class"""
-
-    min_cooling_level = 2
-
     def __init__(self, fan_index, fan_drawer, position):
         super(Fan, self).__init__(fan_index, position)
-    
+
         self.fan_drawer = fan_drawer
         self.led = ComponentFaultyIndicator(self.fan_drawer.get_led())
 
@@ -278,7 +270,7 @@ class Fan(MlnxFan):
         self.fan_speed_set_path = os.path.join(FAN_PATH, "fan{}_speed_set".format(self.index))
         self.fan_max_speed_path = os.path.join(FAN_PATH, "fan{}_max".format(self.index))
         self.fan_min_speed_path = os.path.join(FAN_PATH, "fan{}_min".format(self.index))
-        
+
         self.fan_status_path = os.path.join(FAN_PATH, "fan{}_fault".format(self.index))
 
     def get_direction(self):
@@ -286,21 +278,25 @@ class Fan(MlnxFan):
         Retrieves the fan's direction
 
         Returns:
-            A string, either FAN_DIRECTION_INTAKE or FAN_DIRECTION_EXHAUST
+            A string, either FAN_DIRECTION_INTAKE or FAN_DIRECTION_EXHAUST or FAN_DIRECTION_NOT_APPLICABLE
             depending on fan direction
 
         Notes:
-            What Mellanox calls forward: 
+            What Mellanox calls forward:
             Air flows from fans side to QSFP side, for example: MSN2700-CS2F
             which means intake in community
             What Mellanox calls reverse:
             Air flow from QSFP side to fans side, for example: MSN2700-CS2R
             which means exhaust in community
             According to hw-mgmt:
+                2 stands for N/A, in case fan direction could not be determined
                 1 stands for forward, in other words intake
                 0 stands for reverse, in other words exhaust
         """
-        return self.fan_drawer.get_direction()
+        if not isinstance(self.fan_drawer, VirtualDrawer):
+            return self.fan_drawer.get_direction()
+        else:
+            return MlnxFan.get_fan_direction(FAN_DIR.format(self.index))
 
     def get_status(self):
         """
@@ -340,16 +336,11 @@ class Fan(MlnxFan):
                    in the range 0 (off) to 100 (full speed)
 
         Returns:
-            bool: True if set success, False if fail. 
+            bool: True if set success, False if fail.
         """
         status = True
 
         try:
-            cooling_level = int(speed // 10)
-            if cooling_level < self.min_cooling_level:
-                cooling_level = self.min_cooling_level
-                speed = self.min_cooling_level * 10
-            self.set_cooling_level(cooling_level, cooling_level)
             pwm = int(PWM_MAX*speed/100.0)
             utils.write_file(self.fan_speed_set_path, pwm, raise_exception=True)
         except (ValueError, IOError):

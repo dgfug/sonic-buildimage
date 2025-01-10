@@ -1,7 +1,11 @@
 module sonic-bgp-common {
-    namespace "http://github.com/Azure/sonic-bgp-common";
+    namespace "http://github.com/sonic-net/sonic-bgp-common";
     prefix bgpcmn;
     yang-version 1.1;
+
+    import sonic-types {
+        prefix stypes;
+    }
 
     import ietf-inet-types {
         prefix inet;
@@ -65,12 +69,12 @@ module sonic-bgp-common {
         type enumeration {
             enum tx_all_paths {
                 description
-                    "Send multiple path advertisements for an NLRI from 
+                    "Send multiple path advertisements for an NLRI from
                     the neighbor or group";
             }
             enum tx_best_path_per_as {
                 description
-                    "Send only best path per AS advertisements for an NLRI from 
+                    "Send only best path per AS advertisements for an NLRI from
                     the neighbor or group";
             }
         }
@@ -314,7 +318,7 @@ module sonic-bgp-common {
         }
 
         leaf admin_status {
-            type boolean;
+            type stypes:admin_status;
             description "To enable BGP peer";
         }
 
@@ -338,7 +342,7 @@ module sonic-bgp-common {
         }
 
         leaf admin_status {
-            type boolean;
+            type stypes:admin_status;
             description "Indicates address family active/inactive status";
         }
 
@@ -527,4 +531,51 @@ module sonic-bgp-common {
         }
     }
 
+    grouping sonic-bgp-cmn-neigh {
+        leaf asn {
+            type uint32 {
+                range "0..4294967295";
+            }
+            description "Peer AS number";
+        }
+
+        leaf holdtime {
+            type uint16;
+            description "Hold time";
+        }
+
+        leaf keepalive {
+            type uint16;
+            description "Keepalive interval";
+        }
+
+        leaf local_addr {
+            type inet:ip-address;
+            description "Local source address or interface name to use for connection.";
+        }
+
+        leaf name {
+            type string;
+            description "Peer description";
+        }
+
+        leaf nhopself {
+            type uint8 {
+                range "0..1";
+            }
+            description "Nexthop is self, no nexthop calculation";
+        }
+
+        leaf rrclient {
+            type uint8 {
+                range "0..1";
+            }
+            description "Route reflector client";
+        }
+
+        leaf admin_status {
+            type stypes:admin_status;
+            description "Admin status of BGP peer";
+        }
+    }
 }

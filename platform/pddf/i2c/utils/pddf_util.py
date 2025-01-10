@@ -15,14 +15,13 @@ command:
     switch-nonpddf  : switch to per platform, non-pddf mode
 """
 
-import commands
 import logging
 import getopt
 import os
 import shutil
 import subprocess
 import sys
-
+from sonic_py_common import device_info
 import pddfparse
 
 PLATFORM_ROOT_PATH = '/usr/share/sonic/device'
@@ -120,7 +119,7 @@ def my_log(txt):
     
 def log_os_system(cmd, show):
     logging.info('Run :'+cmd)  
-    status, output = commands.getstatusoutput(cmd)    
+    status, output = subprocess.getstatusoutput(cmd)
     my_log (cmd +"with result:" + str(status))
     my_log ("      output:"+output)    
     if status:
@@ -138,33 +137,9 @@ def driver_check():
         return False   
     return True
 
-
-# Returns platform and HW SKU
-def get_platform_and_hwsku():
-    try:
-        proc = subprocess.Popen([SONIC_CFGGEN_PATH, '-H', '-v', PLATFORM_KEY],
-                                stdout=subprocess.PIPE,
-                                shell=False,
-                                stderr=subprocess.STDOUT)
-        stdout = proc.communicate()[0]
-        proc.wait()
-        platform = stdout.rstrip('\n')
-
-        proc = subprocess.Popen([SONIC_CFGGEN_PATH, '-d', '-v', HWSKU_KEY],
-                                stdout=subprocess.PIPE,
-                                shell=False,
-                                stderr=subprocess.STDOUT)
-        stdout = proc.communicate()[0]
-        proc.wait()
-        hwsku = stdout.rstrip('\n')
-    except OSError, e:
-        raise OSError("Cannot detect platform")
-
-    return (platform, hwsku)
-
 def get_path_to_device():
     # Get platform and hwsku
-    (platform, hwsku) = get_platform_and_hwsku()
+    (platform, hwsku) = device_info.get_platform_and_hwsku()
 
     # Load platform module from source
     platform_path = "/".join([PLATFORM_ROOT_PATH, platform])
@@ -193,14 +168,20 @@ def config_pddf_utils():
                     log_os_system('mv '+SONIC_PLATFORM_BSP_WHL_PKG+' '+SONIC_PLATFORM_BSP_WHL_PKG_BK, 1)
             # PDDF whl package exist ... this must be the whl package created from 
             # PDDF 2.0 ref API classes and some changes on top of it ... install it
+            log_os_system('sync', 1)
             shutil.copy(SONIC_PLATFORM_PDDF_WHL_PKG, SONIC_PLATFORM_BSP_WHL_PKG)
+            log_os_system('sync', 1)
             print("Attemting to install the PDDF sonic_platform wheel package ...")
-            status, output = log_os_system("pip3 install "+ SONIC_PLATFORM_BSP_WHL_PKG, 1)
-            if status:
-                print("Error: Failed to install {}".format(SONIC_PLATFORM_BSP_WHL_PKG))
-                return status
+            if os.path.getsize(SONIC_PLATFORM_BSP_WHL_PKG) != 0:
+                status, output = log_os_system("pip3 install "+ SONIC_PLATFORM_BSP_WHL_PKG, 1)
+                if status:
+                    print("Error: Failed to install {}".format(SONIC_PLATFORM_BSP_WHL_PKG))
+                    return status
+                else:
+                    print("Successfully installed {} package".format(SONIC_PLATFORM_BSP_WHL_PKG))
             else:
-                print("Successfully installed {} package".format(SONIC_PLATFORM_BSP_WHL_PKG))
+                print("Error: Failed to copy {} properly. Exiting ...".format(SONIC_PLATFORM_PDDF_WHL_PKG))
+                return -1
         else:
             # PDDF with platform APIs 1.5 must be supported
             device_plugin_path = "/".join([device_path, "plugins"])
@@ -222,19 +203,25 @@ def config_pddf_utils():
             if not os.path.exists(SONIC_PLATFORM_BSP_WHL_PKG_BK):
                 # bsp 2.0 classes are installed. Take a backup and copy pddf 2.0 whl pkg
                 log_os_system('mv '+SONIC_PLATFORM_BSP_WHL_PKG+' '+SONIC_PLATFORM_BSP_WHL_PKG_BK, 1)
+                log_os_system('sync', 1)
                 shutil.copy(SONIC_PLATFORM_PDDF_WHL_PKG, SONIC_PLATFORM_BSP_WHL_PKG)
+                log_os_system('sync', 1)
                 # uninstall the existing bsp whl pkg
                 status, output = log_os_system("pip3 uninstall sonic-platform -y &> /dev/null", 1)
                 if status:
                     print("Error: Unable to uninstall BSP sonic-platform whl package")
                     return status
-                print("Attemting to install the PDDF sonic_platform wheel package ...")
-                status, output = log_os_system("pip3 install "+ SONIC_PLATFORM_BSP_WHL_PKG, 1)
-                if status:
-                    print("Error: Failed to install {}".format(SONIC_PLATFORM_BSP_WHL_PKG))
-                    return status
+                print("Attempting to install the PDDF sonic_platform wheel package ...")
+                if os.path.getsize(SONIC_PLATFORM_BSP_WHL_PKG) != 0:
+                    status, output = log_os_system("pip3 install "+ SONIC_PLATFORM_BSP_WHL_PKG, 1)
+                    if status:
+                        print("Error: Failed to install {}".format(SONIC_PLATFORM_BSP_WHL_PKG))
+                        return status
+                    else:
+                        print("Successfully installed {} package".format(SONIC_PLATFORM_BSP_WHL_PKG))
                 else:
-                    print("Successfully installed {} package".format(SONIC_PLATFORM_BSP_WHL_PKG))
+                    print("Error: Failed to copy {} properly. Exiting ...".format(SONIC_PLATFORM_PDDF_WHL_PKG))
+                    return -1
             else:
                 # system rebooted in pddf mode 
                 print("System rebooted in PDDF mode, hence keeping the PDDF 2.0 classes")
@@ -343,6 +330,7 @@ def create_pddf_log_files():
     log_os_system("sudo touch /var/log/pddf/cpldmux.txt", 1)
     log_os_system("sudo touch /var/log/pddf/client.txt", 1)
     log_os_system("sudo touch /var/log/pddf/mux.txt", 1)
+    log_os_system("sudo touch /var/log/pddf/fpgapci.txt", 1)
 
 def driver_install():
     global FORCE
@@ -353,6 +341,16 @@ def driver_install():
         if status:
             print("Error: pddf_pre_driver_install script failed with error %d"%status)
             return status
+        # For debug
+        print(output)
+
+    # Removes the perm_kos first, then reload them in a proper sequence
+    for mod in perm_kos:
+        cmd = "modprobe -rq " + mod
+        status, output = log_os_system(cmd, 1)
+        if status:
+            print("driver_install: Unable to unload {}".format(mod))
+            # Don't exit but continue
 
     log_os_system("depmod", 1)
     for i in range(0,len(kos)):
@@ -456,6 +454,11 @@ def do_install():
     status = device_install()
     if status:
         return status
+
+    # Check if S3IP support is enabled, if yes, start the service in no block mode
+    if 'enable_s3ip' in pddf_obj.data['PLATFORM'].keys() and pddf_obj.data['PLATFORM']['enable_s3ip'] == 'yes':
+        log_os_system('systemctl enable pddf-s3ip-init.service', 1)
+        log_os_system('systemctl start --no-block pddf-s3ip-init.service', 1)
 
     return
     

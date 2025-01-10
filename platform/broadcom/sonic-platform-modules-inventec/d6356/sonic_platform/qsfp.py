@@ -9,6 +9,7 @@ try:
     import os
     import sys
     import time
+    import subprocess
     from sonic_platform_base.sfp_base import SfpBase
     from sonic_platform_base.sonic_sfp.sff8436 import sff8436Dom
     from sonic_platform_base.sonic_sfp.sff8436 import sff8436InterfaceId
@@ -108,7 +109,7 @@ class QSfp(SfpBase):
         return retval
 
     def __is_host(self):
-        return os.system("docker > /dev/null 2>&1") == 0
+        return subprocess.call(["docker"]) == 0
 
     def __get_path_to_port_config_file(self):
         host_platform_root_path = '/usr/share/sonic/device'
@@ -240,7 +241,7 @@ class QSfp(SfpBase):
         keys                       |Value Format   |Information	
         ---------------------------|---------------|----------------------------
         type                       |1*255VCHAR     |type of SFP
-        hardware_rev               |1*255VCHAR     |hardware version of SFP
+        vendor_rev                 |1*255VCHAR     |vendor revision of SFP
         serial                     |1*255VCHAR     |serial number of the SFP
         manufacturer               |1*255VCHAR     |SFP vendor name
         model                      |1*255VCHAR     |SFP model name
@@ -256,7 +257,7 @@ class QSfp(SfpBase):
         ========================================================================
         """
 
-        transceiver_info_dict_keys = ['type',                      'hardware_rev',
+        transceiver_info_dict_keys = ['type',                      'vendor_rev',
                                       'serial',                    'manufacturer',
                                       'model',                     'connector',
                                       'encoding',                  'ext_identifier',
@@ -314,7 +315,7 @@ class QSfp(SfpBase):
 
         transceiver_info_dict['manufacturer'] = sfp_vendor_name_data['data']['Vendor Name']['value'] if sfp_vendor_name_data else 'N/A'
         transceiver_info_dict['model']        = sfp_vendor_pn_data['data']['Vendor PN']['value'] if sfp_vendor_pn_data else 'N/A'
-        transceiver_info_dict['hardware_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value'] if sfp_vendor_rev_data else 'N/A'
+        transceiver_info_dict['vendor_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value'] if sfp_vendor_rev_data else 'N/A'
         transceiver_info_dict['serial']       = sfp_vendor_sn_data['data']['Vendor SN']['value'] if sfp_vendor_sn_data else 'N/A'
         transceiver_info_dict['vendor_oui']   = sfp_vendor_oui_data['data']['Vendor OUI']['value'] if sfp_vendor_oui_data else 'N/A'
         transceiver_info_dict['vendor_date']  = sfp_vendor_date_data['data']['VendorDataCode(YYYY-MM-DD Lot)']['value'] if sfp_vendor_date_data else 'N/A'

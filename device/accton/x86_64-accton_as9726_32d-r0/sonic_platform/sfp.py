@@ -6,11 +6,10 @@
 #
 #############################################################################
 
-import os
 import sys
 import time
 import struct
-
+import subprocess
 from ctypes import create_string_buffer
 
 try:
@@ -210,7 +209,7 @@ qsfp_compliance_code_tup = (
 )
 
 info_dict_keys = [
-    'type', 'hardware_rev', 'serial', 'manufacturer',
+    'type', 'vendor_rev', 'serial', 'manufacturer',
     'model', 'connector', 'encoding', 'ext_identifier',
     'ext_rateselect_compliance', 'cable_type', 'cable_length',
     'nominal_bit_rate', 'specification_compliance', 'vendor_date',
@@ -272,7 +271,7 @@ I2C_EEPROM_PATH = '/sys/bus/i2c/devices/{0}-0050/eeprom'
 
 class Sfp(SfpBase):
     """Platform-specific Sfp class"""
-    HOST_CHK_CMD = "docker > /dev/null 2>&1"
+    HOST_CHK_CMD = ["docker"]
     PLATFORM = "x86_64-accton_as9726_32d-r0"
     HWSKU = "Accton-AS9726-32D"
 
@@ -310,7 +309,7 @@ class Sfp(SfpBase):
         return True
 
     def __is_host(self):
-        return os.system(self.HOST_CHK_CMD) == 0
+        return subprocess.call(self.HOST_CHK_CMD) == 0
 
     def __get_path_to_port_config_file(self):
         platform_path = "/".join([self.PLATFORM_ROOT_PATH, self.PLATFORM])
@@ -551,7 +550,7 @@ class Sfp(SfpBase):
         keys                       |Value Format   |Information
         ---------------------------|---------------|----------------------------
         type                       |1*255VCHAR     |type of SFP
-        hardware_rev               |1*255VCHAR     |hardware version of SFP
+        vendor_rev                 |1*255VCHAR     |vendor revision of SFP
         serial                     |1*255VCHAR     |serial number of the SFP
         manufacturer               |1*255VCHAR     |SFP vendor name
         model                      |1*255VCHAR     |SFP model name
@@ -627,7 +626,7 @@ class Sfp(SfpBase):
             transceiver_info_dict['type'] = sfp_type_data['data']['type']['value']
             transceiver_info_dict['manufacturer'] = sfp_vendor_name_data['data']['Vendor Name']['value']
             transceiver_info_dict['model'] = sfp_vendor_pn_data['data']['Vendor PN']['value']
-            transceiver_info_dict['hardware_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
+            transceiver_info_dict['vendor_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
             transceiver_info_dict['serial'] = sfp_vendor_sn_data['data']['Vendor SN']['value']
 
         elif self.sfp_type == QSFP_TYPE:
@@ -770,7 +769,7 @@ class Sfp(SfpBase):
                 sfp_vendor_name_data['data']['Vendor Name']['value'])
             transceiver_info_dict['model'] = str(
                 sfp_vendor_pn_data['data']['Vendor PN']['value'])
-            transceiver_info_dict['hardware_rev'] = str(
+            transceiver_info_dict['vendor_rev'] = str(
                 sfp_vendor_rev_data['data']['Vendor Rev']['value'])
             transceiver_info_dict['serial'] = str(
                 sfp_vendor_sn_data['data']['Vendor SN']['value'])
@@ -845,7 +844,7 @@ class Sfp(SfpBase):
             transceiver_info_dict['type'] = sfp_interface_bulk_data['data']['type']['value']
             transceiver_info_dict['manufacturer'] = sfp_vendor_name_data['data']['Vendor Name']['value']
             transceiver_info_dict['model'] = sfp_vendor_pn_data['data']['Vendor PN']['value']
-            transceiver_info_dict['hardware_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
+            transceiver_info_dict['vendor_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
             transceiver_info_dict['serial'] = sfp_vendor_sn_data['data']['Vendor SN']['value']
             transceiver_info_dict['vendor_oui'] = sfp_vendor_oui_data['data']['Vendor OUI']['value']
             transceiver_info_dict['vendor_date'] = sfp_vendor_date_data[

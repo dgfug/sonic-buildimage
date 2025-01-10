@@ -8,8 +8,8 @@
 
 try:
     import time
-    from ctypes import create_string_buffer
-    from sonic_platform_base.sfp_base import SfpBase
+    from ctypes import c_char
+    from sonic_platform_base.sonic_xcvr.sfp_optoe_base import SfpOptoeBase
     from sonic_platform_base.sonic_sfp.sff8472 import sff8472InterfaceId
     from sonic_platform_base.sonic_sfp.sff8472 import sff8472Dom
     from sonic_platform_base.sonic_sfp.sff8436 import sff8436InterfaceId
@@ -121,8 +121,8 @@ SFP_VOLT_OFFSET = 98
 SFP_VOLT_WIDTH = 2
 SFP_CHANNL_MON_OFFSET = 100
 SFP_CHANNL_MON_WIDTH = 6
-SFP_CHANNL_STATUS_OFFSET = 110
-SFP_CHANNL_STATUS_WIDTH = 1
+SFP_STATUS_CONTROL_OFFSET = 110
+SFP_STATUS_CONTROL_WIDTH = 1
 SFP_TX_DISABLE_HARD_BIT = 7
 SFP_TX_DISABLE_SOFT_BIT = 6
 
@@ -157,7 +157,7 @@ PORT_START = 1
 PORT_END = 55
 
 
-class Sfp(SfpBase):
+class Sfp(SfpOptoeBase):
     """Platform-specific Sfp class"""
 
     # Port I2C number
@@ -172,7 +172,7 @@ class Sfp(SfpBase):
     PRS_PATH = "/sys/devices/platform/e1031.smc/SFP/sfp_modabs"
 
     def __init__(self, sfp_index, sfp_name):
-        SfpBase.__init__(self)
+        SfpOptoeBase.__init__(self)
 
         # Init common function
         self._api_common = Common()
@@ -194,7 +194,7 @@ class Sfp(SfpBase):
             self.port_to_eeprom_mapping[x] = eeprom_path.format(
                 self.port_to_i2c_mapping[x])
 
-        self.info_dict_keys = ['type', 'hardware_rev', 'serial', 'manufacturer', 'model', 'connector', 'encoding', 'ext_identifier',
+        self.info_dict_keys = ['type', 'vendor_rev', 'serial', 'manufacturer', 'model', 'connector', 'encoding', 'ext_identifier',
                                'ext_rateselect_compliance', 'cable_type', 'cable_length', 'nominal_bit_rate', 'specification_compliance',
                                'vendor_date', 'vendor_oui', "application_advertisement", "type_abbrv_name"]
 
@@ -235,7 +235,7 @@ class Sfp(SfpBase):
         for i in range(0, num_bytes):
             eeprom_raw.append("0x00")
 
-        sysfs_sfp_i2c_client_eeprom_path = self.port_to_eeprom_mapping[self.port_num]
+        sysfs_sfp_i2c_client_eeprom_path = self.get_eeprom_path()
         try:
             sysfsfile_eeprom = open(
                 sysfs_sfp_i2c_client_eeprom_path, mode="rb", buffering=0)
@@ -355,6 +355,9 @@ class Sfp(SfpBase):
             self.dom_rx_power_supported = False
             self.dom_tx_power_supported = False
 
+    def get_eeprom_path(self):
+        return self.port_to_eeprom_mapping[self.port_num]
+
     def get_transceiver_info(self):
         """
         Retrieves transceiver info of this SFP
@@ -364,7 +367,7 @@ class Sfp(SfpBase):
         keys                       |Value Format   |Information
         ---------------------------|---------------|----------------------------
         type                       |1*255VCHAR     |type of SFP
-        hardware_rev               |1*255VCHAR     |hardware version of SFP
+        vendor_rev                 |1*255VCHAR     |vendor revision of SFP
         serial                     |1*255VCHAR     |serial number of the SFP
         manufacturer               |1*255VCHAR     |SFP vendor name
         model                      |1*255VCHAR     |SFP model name
@@ -438,7 +441,7 @@ class Sfp(SfpBase):
             transceiver_info_dict['type'] = sfp_type_data['data']['type']['value']
             transceiver_info_dict['manufacturer'] = sfp_vendor_name_data['data']['Vendor Name']['value']
             transceiver_info_dict['model'] = sfp_vendor_pn_data['data']['Vendor PN']['value']
-            transceiver_info_dict['hardware_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
+            transceiver_info_dict['vendor_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
             transceiver_info_dict['serial'] = sfp_vendor_sn_data['data']['Vendor SN']['value']
             transceiver_info_dict['vendor_oui'] = 'N/A'
             transceiver_info_dict['vendor_date'] = 'N/A'
@@ -515,7 +518,7 @@ class Sfp(SfpBase):
             transceiver_info_dict['type'] = sfp_interface_bulk_data['data']['type']['value']
             transceiver_info_dict['manufacturer'] = sfp_vendor_name_data['data']['Vendor Name']['value']
             transceiver_info_dict['model'] = sfp_vendor_pn_data['data']['Vendor PN']['value']
-            transceiver_info_dict['hardware_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
+            transceiver_info_dict['vendor_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
             transceiver_info_dict['serial'] = sfp_vendor_sn_data['data']['Vendor SN']['value']
             transceiver_info_dict['vendor_oui'] = sfp_vendor_oui_data['data']['Vendor OUI']['value']
             transceiver_info_dict['vendor_date'] = sfp_vendor_date_data[
@@ -869,7 +872,7 @@ class Sfp(SfpBase):
         elif self.sfp_type == SFP_TYPE:
             offset = 256
             dom_channel_monitor_raw = self._read_eeprom_specific_bytes(
-                (offset + SFP_CHANNL_STATUS_OFFSET), SFP_CHANNL_STATUS_WIDTH)
+                (offset + SFP_STATUS_CONTROL_OFFSET), SFP_STATUS_CONTROL_WIDTH)
             if dom_channel_monitor_raw is not None:
                 rx_los_data = int(dom_channel_monitor_raw[0], 16)
                 rx_los_list.append(rx_los_data & 0x02 != 0)
@@ -901,7 +904,7 @@ class Sfp(SfpBase):
         elif self.sfp_type == SFP_TYPE:
             offset = 256
             dom_channel_monitor_raw = self._read_eeprom_specific_bytes(
-                (offset + SFP_CHANNL_STATUS_OFFSET), SFP_CHANNL_STATUS_WIDTH)
+                (offset + SFP_STATUS_CONTROL_OFFSET), SFP_STATUS_CONTROL_WIDTH)
             if dom_channel_monitor_raw is not None:
                 tx_fault_data = int(dom_channel_monitor_raw[0], 16)
                 tx_fault_list.append(tx_fault_data & 0x04 != 0)
@@ -936,7 +939,7 @@ class Sfp(SfpBase):
         elif self.sfp_type == SFP_TYPE:
             offset = 256
             dom_channel_monitor_raw = self._read_eeprom_specific_bytes(
-                (offset + SFP_CHANNL_STATUS_OFFSET), SFP_CHANNL_STATUS_WIDTH)
+                (offset + SFP_STATUS_CONTROL_OFFSET), SFP_STATUS_CONTROL_WIDTH)
             if dom_channel_monitor_raw is not None:
                 tx_disable_data = int(dom_channel_monitor_raw[0], 16)
                 tx_disable_list.append(tx_disable_data & 0xC0 != 0)
@@ -1170,31 +1173,36 @@ class Sfp(SfpBase):
         Returns:
             A boolean, True if tx_disable is set successfully, False if not
         """
-        sysfs_sfp_i2c_client_eeprom_path = self.port_to_eeprom_mapping[self.port_num]
-        status_control_raw = self._read_eeprom_specific_bytes(
-            SFP_CHANNL_STATUS_OFFSET, SFP_CHANNL_STATUS_WIDTH)
-        if status_control_raw is not None:
-            # Set bit 6 for Soft TX Disable Select
-            # 01000000 = 64 and 10111111 = 191
-            tx_disable_bit = 64 if tx_disable else 191
-            status_control = int(status_control_raw[0], 16)
-            tx_disable_ctl = (status_control | tx_disable_bit) if tx_disable else (
-                status_control & tx_disable_bit)
-            try:
-                sysfsfile_eeprom = open(
-                    sysfs_sfp_i2c_client_eeprom_path, mode="r+b", buffering=0)
-                buffer = create_string_buffer(1)
-                buffer[0] = chr(tx_disable_ctl)
-                # Write to eeprom
-                sysfsfile_eeprom.seek(SFP_CHANNL_STATUS_OFFSET)
-                sysfsfile_eeprom.write(buffer[0])
-            except Exception:
-                return False
-            finally:
-                if sysfsfile_eeprom:
-                    sysfsfile_eeprom.close()
-                    time.sleep(0.01)
-            return True
+        if not self.get_presence():
+            return False
+
+        if self.dom_tx_disable_supported:
+            # SFP status/control register at address A2h, byte 110
+            offset = 256
+            sysfs_sfp_i2c_client_eeprom_path = self.get_eeprom_path()
+            status_control_raw = self._read_eeprom_specific_bytes(
+                (offset + SFP_STATUS_CONTROL_OFFSET), SFP_STATUS_CONTROL_WIDTH)
+            if status_control_raw is not None:
+                # Set bit 6 for Soft TX Disable Select
+                # 01000000 = 64 and 10111111 = 191
+                tx_disable_bit = 64 if tx_disable else 191
+                status_control = int(status_control_raw[0], 16)
+                tx_disable_ctl = (status_control | tx_disable_bit) if tx_disable else (
+                    status_control & tx_disable_bit)
+                try:
+                    sysfsfile_eeprom = open(
+                        sysfs_sfp_i2c_client_eeprom_path, mode="r+b", buffering=0)
+                    tx_disable_data = c_char(tx_disable_ctl)
+                    # Write to eeprom
+                    sysfsfile_eeprom.seek(offset + SFP_STATUS_CONTROL_OFFSET)
+                    sysfsfile_eeprom.write(tx_disable_data)
+                except Exception:
+                    return False
+                finally:
+                    if sysfsfile_eeprom:
+                        sysfsfile_eeprom.close()
+                        time.sleep(0.01)
+                return True
         return False
 
     def tx_disable_channel(self, channel, disable):

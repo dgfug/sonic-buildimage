@@ -5,7 +5,6 @@ reboot_file_found=false
 smf_dir_missing=0
 nvram_missing=0
 
-REBOOT_CAUSE_FILE=/host/reboot-cause/reboot-cause.txt
 REBOOT_REASON_FILE=/host/reboot-cause/platform/reboot_reason
 BIOS_VERSION_FILE=/host/reboot-cause/platform/bios_minor_version
 SMF_MSS_VERSION_FILE=/sys/devices/platform/SMF.512/hwmon/*/smf_firmware_ver
@@ -15,6 +14,7 @@ MAILBOX_POWERON_REASON=/sys/devices/platform/SMF.512/hwmon/*/mb_poweron_reason
 NVRAM_DEVICE_FILE=/dev/nvram
 RESET_REASON_FILE=/host/reboot-cause/platform/reset_reason
 SMF_DIR=/sys/devices/platform/SMF.512/hwmon/
+TCO_RESET_NVRAM_OFFSET=0x59
 
 while [[ ! -d $SMF_DIR ]]
 do
@@ -27,6 +27,7 @@ do
 done
 
 SMF_RESET=$(cat $SMF_RESET_REASON)
+TCO_WD_RESET=0
 
 if [[ -d /host/reboot-cause/platform ]]; then
     reboot_dir_found=true
@@ -80,6 +81,18 @@ _get_smf_reset_register(){
             echo "Fourth reset - $fourth_reset" >> $RESET_REASON_FILE
         fi
         logger -p user.info -t DELL_S6100_REBOOT_CAUSE "RST value in NVRAM: $first_reset, $second_reset, $third_reset, $fourth_reset"
+
+        if [[ $BIOS_VERSION_MINOR -gt 8 ]]; then
+            # Retrieve TCO reset status
+            tco_nvram=$((16#$(nvram_rd_wr.py --get --offset $TCO_RESET_NVRAM_OFFSET | cut -d " " -f 2)))
+            TCO_WD_RESET=$(($tco_nvram & 1))
+            logger -p user.info -t DELL_S6100_REBOOT_CAUSE "TCO status value in NVRAM: $TCO_WD_RESET"
+
+            # Clear TCO reset status in NVRAM
+            tco_nvram=$(printf "%x" $(($tco_nvram & 0xfe)))
+            nvram_rd_wr.py --set --val $tco_nvram --offset $TCO_RESET_NVRAM_OFFSET
+        fi
+
         # Clearing NVRAM values to holding next reset values
         nvram_rd_wr.py --set --val 0xee --offset 0x58
         nvram_rd_wr.py --set --val 0xee --offset 0x5c
@@ -118,20 +131,6 @@ _is_watchdog_reset(){
 
     echo 0
     return
-}
-
-_is_unknown_reset(){
-    if [[ -f $REBOOT_CAUSE_FILE ]]; then
-        if [[ $1 = 0 ]]; then
-            echo "Unknown software reboot" > $REBOOT_CAUSE_FILE
-            return
-        fi
-        curr_poweron_reason=$(cat $SMF_POWERON_REASON)
-        curr_reset_reason=$SMF_RESET
-        mb_poweron_reason=$(cat $MAILBOX_POWERON_REASON)
-        echo "Unknown POR: $curr_poweron_reason RST: $curr_reset_reason MBR: $mb_poweron_reason" > $REBOOT_CAUSE_FILE
-    fi
-
 }
 
 _is_software_reboot(){
@@ -183,14 +182,15 @@ update_mailbox_register(){
            && [[ $SMF_MSS_VERSION_MAJOR -ge 2 ]] && [[ $SMF_MSS_VERSION_MINOR -ge 7 ]] \
            && [[ $SMF_FPGA_VERSION_MAJOR -ge 1 ]] && [[ $SMF_FPGA_VERSION_MINOR -ge 4 ]]; then
 
-            if [[ $reason = "cc" ]]; then
+            if [[ $TCO_WD_RESET = 1 ]]; then
+                echo 0xdd > $MAILBOX_POWERON_REASON
+            elif [[ $reason = "cc" ]]; then
                 _is_software_reboot
             elif [[ $SMF_RESET = "11" ]]; then
                 echo 0xee > $MAILBOX_POWERON_REASON
             elif [[ $SMF_RESET = "33" ]]; then
                 echo 0xdd > $MAILBOX_POWERON_REASON
             else
-                echo "Unknown software reboot" > $REBOOT_CAUSE_FILE
                 echo 0x99 > $MAILBOX_POWERON_REASON
             fi
 
@@ -206,10 +206,11 @@ update_mailbox_register(){
                 echo 0xee > $MAILBOX_POWERON_REASON
             elif [[ $is_wd_reboot = 1 ]] && [[ $reason != "cc" ]]; then
                 echo 0xdd > $MAILBOX_POWERON_REASON
+            elif [[ $TCO_WD_RESET = 1 ]]; then
+                echo 0xdd > $MAILBOX_POWERON_REASON
             elif [[ $reason = "cc" ]]; then
                 _is_software_reboot
             else
-                _is_unknown_reset $is_thermal_reboot
                 echo 0x99 > $MAILBOX_POWERON_REASON
             fi
         fi

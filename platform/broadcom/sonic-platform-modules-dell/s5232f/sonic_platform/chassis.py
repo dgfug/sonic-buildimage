@@ -39,6 +39,7 @@ class Chassis(ChassisBase):
 
     oir_fd = -1
     epoll = -1
+    REBOOT_CAUSE_PATH = "/host/reboot-cause/platform/reboot_reason"
     pci_res = "/sys/bus/pci/devices/0000:04:00.0/resource0"
     sysled_offset = 0x0024
     SYSLED_COLOR_TO_REG = {
@@ -91,8 +92,7 @@ class Chassis(ChassisBase):
 
         for port_num in range(self.PORT_START, self.PORTS_IN_BLOCK):
             # sfp get uses zero-indexing, but port numbers start from 1
-            presence = self.get_sfp(port_num).get_presence()
-            self._global_port_pres_dict[port_num] = '1' if presence else '0'
+            self._global_port_pres_dict[port_num] = '0'
 
     def __del__(self):
         if self.oir_fd != -1:
@@ -118,6 +118,7 @@ class Chassis(ChassisBase):
                 if(presence and self._global_port_pres_dict[port_num] == '0'):
                     self._global_port_pres_dict[port_num] = '1'
                     port_dict[port_num] = '1'
+                    self.get_sfp(port_num)._initialize_media(delay=True)
                 elif(not presence and
                         self._global_port_pres_dict[port_num] == '1'):
                     self._global_port_pres_dict[port_num] = '0'
@@ -289,15 +290,15 @@ class Chassis(ChassisBase):
             return (self.REBOOT_CAUSE_NON_HARDWARE, None)
 
         if reboot_cause & 0x1:
-            return (self.REBOOT_CAUSE_POWER_LOSS, None)
+            return (self.REBOOT_CAUSE_POWER_LOSS, "Power on reset")
         elif reboot_cause & 0x2:
             return (self.REBOOT_CAUSE_NON_HARDWARE, None)
         elif reboot_cause & 0x4:
             return (self.REBOOT_CAUSE_HARDWARE_OTHER, "PSU Shutdown")
         elif reboot_cause & 0x8:
-            return (self.REBOOT_CAUSE_THERMAL_OVERLOAD_CPU, None)
+            return (self.REBOOT_CAUSE_THERMAL_OVERLOAD_CPU, "Thermal overload")
         elif reboot_cause & 0x10:
-            return (self.REBOOT_CAUSE_WATCHDOG, None)
+            return (self.REBOOT_CAUSE_WATCHDOG, "Watchdog reset")
         elif reboot_cause & 0x20:
             return (self.REBOOT_CAUSE_HARDWARE_OTHER, "BMC Shutdown")
         elif reboot_cause & 0x40:

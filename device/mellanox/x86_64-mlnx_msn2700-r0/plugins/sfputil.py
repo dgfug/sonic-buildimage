@@ -48,7 +48,7 @@ SYSTEM_NOT_READY = 'system_not_ready'
 SYSTEM_READY = 'system_become_ready'
 SYSTEM_FAIL = 'system_fail'
 
-GET_PLATFORM_CMD = "sonic-cfggen -d -v DEVICE_METADATA.localhost.platform"
+GET_PLATFORM_CMD = ["sonic-cfggen", "-d", "-v", "DEVICE_METADATA.localhost.platform"]
 
 # Ethernet<n> <=> sfp<n+SFP_PORT_NAME_OFFSET>
 SFP_PORT_NAME_OFFSET = 0
@@ -60,9 +60,9 @@ platform_dict = {'x86_64-mlnx_msn2700-r0': 0, 'x86_64-mlnx_msn2740-r0': 0, 'x86_
                  'x86_64-mlnx_msn2410-r0': 2, 'x86_64-mlnx_msn2010-r0': 3, 'x86_64-mlnx_msn3420-r0': 5,
                  'x86_64-mlnx_msn3700-r0': 0, 'x86_64-mlnx_msn3700c-r0': 0, 'x86_64-mlnx_msn3800-r0': 4,
                  'x86_64-mlnx_msn4410-r0': 0, 'x86_64-mlnx_msn4600-r0': 4, 'x86_64-mlnx_msn4600c-r0': 4, 
-                 'x86_64-mlnx_msn4700-r0': 0}
+                 'x86_64-mlnx_msn4700-r0': 0, 'x86_64-nvidia_sn2201-r0': 6, 'x86_64-nvidia_sn5600-r0': 4}
 port_position_tuple_list = [(0, 0, 31, 32, 1), (0, 0, 15, 16, 1), (0, 48, 55, 56, 1),
-                            (0, 18, 21, 22, 1), (0, 0, 63, 64, 1), (0, 48, 59, 60, 1)]
+                            (0, 18, 21, 22, 1), (0, 0, 63, 64, 1), (0, 48, 59, 60, 1), (0, 48, 51, 52, 1)]
 
 
 def log_info(msg, also_print_to_console=False):
@@ -110,7 +110,7 @@ class SfpUtil(SfpUtilBase):
         raise Exception()
 
     def get_port_position_tuple_by_platform_name(self):
-        p = subprocess.Popen(GET_PLATFORM_CMD, shell=True, universal_newlines=True, stdout=subprocess.PIPE)
+        p = subprocess.Popen(GET_PLATFORM_CMD, universal_newlines=True, stdout=subprocess.PIPE)
         out, err = p.communicate()
         position_tuple = port_position_tuple_list[platform_dict[out.rstrip('\n')]]
         return position_tuple
@@ -136,9 +136,9 @@ class SfpUtil(SfpUtilBase):
         port_num += SFP_PORT_NAME_OFFSET
         sfpname = SFP_PORT_NAME_CONVENTION.format(port_num)
 
-        ethtool_cmd = "ethtool -m {} 2>/dev/null".format(sfpname)
+        ethtool_cmd = ["ethtool", "-m", sfpname]
         try:
-            proc = subprocess.Popen(ethtool_cmd, stdout=subprocess.PIPE, shell=True, universal_newlines=True, stderr=subprocess.STDOUT)
+            proc = subprocess.Popen(ethtool_cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=subprocess.DEVNULL)
             stdout = proc.communicate()[0]
             proc.wait()
             result = stdout.rstrip('\n')
@@ -155,10 +155,10 @@ class SfpUtil(SfpUtilBase):
         if port_num < self.port_start or port_num > self.port_end:
             return False
 
-        lpm_cmd = "docker exec syncd python /usr/share/sonic/platform/plugins/sfplpmget.py {}".format(port_num)
+        lpm_cmd = ["docker", "exec", "syncd", "python", "/usr/share/sonic/platform/plugins/sfplpmget.py", str(port_num)]
 
         try:
-            output = subprocess.check_output(lpm_cmd, shell=True, universal_newlines=True)
+            output = subprocess.check_output(lpm_cmd, universal_newlines=True)
             if 'LPM ON' in output:
                 return True
         except subprocess.CalledProcessError as e:
@@ -178,11 +178,11 @@ class SfpUtil(SfpUtilBase):
 
         # Compose LPM command
         lpm = 'on' if lpmode else 'off'
-        lpm_cmd = "docker exec syncd python /usr/share/sonic/platform/plugins/sfplpmset.py {} {}".format(port_num, lpm)
+        lpm_cmd = ["docker", "exec", "syncd", "python", "/usr/share/sonic/platform/plugins/sfplpmset.py", str(port_num), lpm]
 
         # Set LPM
         try:
-            subprocess.check_output(lpm_cmd, shell=True, universal_newlines=True)
+            subprocess.check_output(lpm_cmd, universal_newlines=True)
         except subprocess.CalledProcessError as e:
             print("Error! Unable to set LPM for {}, rc = {}, err msg: {}".format(port_num, e.returncode, e.output))
             return False
@@ -194,10 +194,10 @@ class SfpUtil(SfpUtilBase):
         if port_num < self.port_start or port_num > self.port_end:
             return False
 
-        lpm_cmd = "docker exec syncd python /usr/share/sonic/platform/plugins/sfpreset.py {}".format(port_num)
+        lpm_cmd = ["docker", "exec", "syncd", "python", "/usr/share/sonic/platform/plugins/sfpreset.py", str(port_num)]
 
         try:
-            subprocess.check_output(lpm_cmd, shell=True, universal_newlines=True)
+            subprocess.check_output(lpm_cmd, universal_newlines=True)
             return True
         except subprocess.CalledProcessError as e:
             print("Error! Unable to set LPM for {}, rc = {}, err msg: {}".format(port_num, e.returncode, e.output))
@@ -267,9 +267,9 @@ class SfpUtil(SfpUtilBase):
         sfpname = SFP_PORT_NAME_CONVENTION.format(port_num)
 
         eeprom_raw = []
-        ethtool_cmd = "ethtool -m {} hex on offset {} length {}".format(sfpname, offset, num_bytes)
+        ethtool_cmd = ["ethtool", "-m", sfpname, "hex", "on", "offset", str(offset), "length", str(num_bytes)]
         try:
-            output = subprocess.check_output(ethtool_cmd, shell=True, universal_newlines=True)
+            output = subprocess.check_output(ethtool_cmd, universal_newlines=True)
             output_lines = output.splitlines()
             first_line_raw = output_lines[0]
             if "Offset" in first_line_raw:
@@ -349,7 +349,7 @@ class SfpUtil(SfpUtilBase):
             transceiver_info_dict['type'] = sfp_type_data['data']['type']['value']
             transceiver_info_dict['manufacturer'] = sfp_vendor_name_data['data']['Vendor Name']['value']
             transceiver_info_dict['model'] = sfp_vendor_pn_data['data']['Vendor PN']['value']
-            transceiver_info_dict['hardware_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
+            transceiver_info_dict['vendor_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
             transceiver_info_dict['serial'] = sfp_vendor_sn_data['data']['Vendor SN']['value']
             # Below part is added to avoid fail the xcvrd, shall be implemented later
             transceiver_info_dict['vendor_oui'] = 'N/A'
@@ -438,7 +438,7 @@ class SfpUtil(SfpUtilBase):
             transceiver_info_dict['type'] = sfp_interface_bulk_data['data']['type']['value']
             transceiver_info_dict['manufacturer'] = sfp_vendor_name_data['data']['Vendor Name']['value']
             transceiver_info_dict['model'] = sfp_vendor_pn_data['data']['Vendor PN']['value']
-            transceiver_info_dict['hardware_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
+            transceiver_info_dict['vendor_rev'] = sfp_vendor_rev_data['data']['Vendor Rev']['value']
             transceiver_info_dict['serial'] = sfp_vendor_sn_data['data']['Vendor SN']['value']
             transceiver_info_dict['vendor_oui'] = sfp_vendor_oui_data['data']['Vendor OUI']['value']
             transceiver_info_dict['vendor_date'] = sfp_vendor_date_data[
